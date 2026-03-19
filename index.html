@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>医疗 AI 诊断系统 Pro</title>
+    <style>
+        /* --- 1. 全局背景与氛围 --- */
+        :root {
+            --primary-blue: #007bff;
+            --deep-blue: #0f172a;
+            --glass-surface: rgba(30, 41, 59, 0.7); /* 深色玻璃 */
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-light: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            color: var(--text-light);
+            overflow: hidden;
+            /* 深色医疗背景图 */
+            background: url('https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 背景遮罩，让背景变暗，突出前景 */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 58, 138, 0.8));
+            z-index: -1;
+        }
+
+        /* --- 2. 立体容器 (主窗口) --- */
+        .app-window {
+            width: 1200px;
+            height: 800px;
+            background: var(--glass-surface);
+            backdrop-filter: blur(20px); /* 强力毛玻璃 */
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 50px rgba(0, 0, 0, 0.5), /* 深度阴影 */
+                0 0 0 1px rgba(255, 255, 255, 0.05); /* 细微高光边框 */
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            animation: floatIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        @keyframes floatIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* --- 3. 左侧导航栏 (增加层次感) --- */
+        .sidebar {
+            width: 260px;
+            background: rgba(0, 0, 0, 0.3);
+            border-right: 1px solid var(--glass-border);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-icon {
+            width: 30px; height: 30px;
+            background: var(--primary-blue);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 15px var(--primary-blue);
+        }
+        .nav-item {
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            color: var(--text-dim);
+            cursor: default;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .nav-item.active {
+            background: rgba(0, 123, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(0, 123, 255, 0.3);
+        }
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+        
+        .system-status {
+            margin-top: auto;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            margin-right: 5px;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        /* --- 4. 右侧内容区 --- */
+        .content-area {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* --- 登录卡片 (独立悬浮) --- */
+        #login-card {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 380px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            text-align: center;
+            color: #333;
+            z-index: 10;
+        }
+        #login-card h2 { margin-top: 0; color: var(--deep-blue); }
+        
+        /* --- 主界面表单 (网格布局) --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        .panel-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            transition: 0.3s;
+        }
+        .panel-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 输入框风格 */
+        .input-group { margin-bottom: 15px; }
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .styled-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        .styled-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.3);
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .styled-input option { background: #333; } /* 下拉框选项背景 */
+
+        /* 按钮 */
+        .btn-glow {
+            background: linear-gradient(90deg, #007bff, #00c6ff);
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0, 123, 255, 0.4);
+            transition: 0.3s;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.6);
+        }
+
+        /* --- Loading --- */
+        #loading-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        .scan-line {
+            width: 200px; height: 2px;
+            background: var(--primary-blue);
+            box-shadow: 0 0 20px var(--primary-blue);
+            margin-bottom: 20px;
+            animation: scan 1.5s infinite alternate;
+        }
+        @keyframes scan { from { width: 50px; opacity: 0.5; } to { width: 300px; opacity: 1; } }
+
+        /* --- 报告单 (保持白色清晰，但放在模态框里) --- */
+        #report-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+        }
+        #report-paper {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            color: #333;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+        /* 报告单内部样式复用之前的逻辑，这里简化展示 */
+        .report-header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 20px; border-radius: 4px; }
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; font-size: 13px; }
+        .report-box { border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
+        .report-title { background: #e3f2fd; color: #007bff; padding: 5px; font-weight: bold; margin-bottom: 5px; }
+        .data-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 3px 0; }
+        .highlight-red { color: red; font-weight: bold; }
+        .c4-type { background: #fff3cd; color: #856404; padding: 5px; border-radius: 4px; font-weight: bold; border: 1px solid #ffeeba; }
+        
+        .hidden { display: none !important; }
+
+        /* 打印优化 */
+        @media print {
+            body * { visibility: hidden; }
+            #report-modal { display: block !important; background: white; position: absolute; top: 0; left: 0; }
+            #report-paper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: none; max-height: none; }
+            #report-modal * { visibility: visible; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 主窗口容器 -->
+    <div class="app-window">
+        
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">AI</div>
+                <span>Medical OS</span>
+            </div>
+            
+            <div class="nav-item active">
+                <span>📊</span> 诊断工作台
+            </div>
+            <div class="nav-item">
+                <span>📁</span> 患者档案库
+            </div>
+            <div class="nav-item">
+                <span></span> 分子数据库
+            </div>
+            <div class="nav-item">
+                <span>⚙️</span> 系统设置
+            </div>
+
+            <div class="system-status">
+                <div><span class="status-dot"></span> 系统运行正常</div>
+                <div style="margin-top:5px; opacity: 0.6;">AI 引擎：v4.2.0</div>
+                <div style="opacity: 0.6;">连接：加密</div>
+            </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="content-area">
+            
+            <!-- 1. 登录卡片 -->
+            <div id="login-card">
+                <h2>欢迎回来</h2>
+                <p style="color:#666; font-size:13px; margin-bottom: 20px;">请输入您的医生凭证以访问系统</p>
+                <input type="text" class="styled-input" style="background:#f0f2f5; color:#333; border:1px solid #ddd;" value="Dr. Smith" placeholder="用户名">
+                <input type="password" class="styled-input" style="background:#f0f2f5; color:#333; border:1px solid #ddd;" value="123456" placeholder="密码">
+                <button class="btn-glow" onclick="goToMain()">安全登录</button>
+                <div style="margin-top:15px; font-size:12px; color:#999;">
+                    <label><input type="checkbox" checked> 记住我</label>
+                </div>
+            </div>
+
+            <!-- 2. 主录入界面 -->
+            <div id="main-view" class="hidden">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h1 style="margin:0; font-size:24px; font-weight:300;">新建患者分析 <span style="font-size:14px; color:var(--text-dim);">// KOA-2026</span></h1>
+                    <div style="font-size:12px; color:var(--text-dim);">当前用户：Dr. Smith</div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- 卡片 1: 基本信息 -->
+                    <div class="panel-card">
+                        <div class="panel-title">
+                            <span>01. 患者基本信息</span>
+                            <span style="font-size:12px; opacity:0.5;">ID: NEW-001</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="input-group">
+                                <label>姓名</label>
+                                <input type="text" class="styled-input" value="张 XX">
+                            </div>
+                            <div class="input-group">
+                                <label>年龄</label>
+                                <input type="number" class="styled-input" value="58">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>性别</label>
+                            <select class="styled-input"><option>男</option><option selected>女</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>BMI 指数</label>
+                            <input type="number" class="styled-input" value="24.5">
+                        </div>
+                    </div>
+
+                    <!-- 卡片 2: 临床数据 -->
+                    <div class="panel-card">
+                        <div class="panel-title">02. 临床评估数据</div>
+                        <div class="input-group">
+                            <label>VAS 疼痛评分 (0-10)</label>
+                            <input type="range" min="0" max="10" value="7" style="width:100%" oninput="this.nextElementSibling.value = this.value">
+                            <output style="float:right; color:var(--primary-blue); font-weight:bold;">7</output>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:15px;">
+                            <div class="input-group">
+                                <label>KOOS 评分</label>
+                                <input type="number" class="styled-input" value="45">
+                            </div>
+                            <div class="input-group">
+                                <label>病程 (月)</label>
+                                <input type="number" class="styled-input" value="12">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 卡片 3: 影像学 -->
+                    <div class="panel-card">
+                        <div class="panel-title">03. 影像学特征</div>
+                        <div class="input-group">
+                            <label>K-L 分级</label>
+                            <select class="styled-input"><option>I 级</option><option>II 级</option><option selected>III 级</option><option>IV 级</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>软骨厚度 (mm)</label>
+                            <input type="number" class="styled-input" value="2.1">
+                        </div>
+                    </div>
+
+                    <!-- 卡片 4: 分子数据 -->
+                    <div class="panel-card">
+                        <div class="panel-title">04. 分子标志物检测</div>
+                        <div class="input-group">
+                            <label>检测数据 (支持粘贴)</label>
+                            <textarea class="styled-input" rows="4" style="resize:none;">ACAN: 32.5 ng/mL
+VCAN: 28.7 ng/mL
+IL-1β: 8.7 pg/mL
+TNF-α: 12.3 pg/mL</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-glow" onclick="startAnalysis()">
+                    <span style="margin-right:8px;">⚡</span> 启动 AI 分析引擎
+                </button>
+            </div>
+
+            <!-- Loading 遮罩 -->
+            <div id="loading-overlay">
+                <div class="scan-line"></div>
+                <h3 style="font-weight:300; letter-spacing:2px;">ANALYZING DATA...</h3>
+                <p style="color:var(--text-dim); font-size:12px; margin-top:10px;">正在匹配 C4 型炎症驱动特征库</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 3. 报告单模态框 -->
+    <div id="report-modal">
+        <div id="report-paper">
+            <div class="report-header">KOA 分子亚型检测报告</div>
+            
+            <div class="report-grid">
+                <div>患者 ID: <strong>KOA-2026-0012</strong></div>
+                <div>姓名：<strong>张 XX</strong></div>
+                <div>年龄/性别：<strong>58 岁 / 女</strong></div>
+                <div>报告日期：<strong>2026-03-13</strong></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:15px; margin-bottom:20px;">
+                <div class="report-box">
+                    <div class="report-title">检测结果</div>
+                    <div class="data-row"><span>ACAN</span><span class="highlight-red">32.5 ng/mL ↓</span></div>
+                    <div class="data-row"><span>VCAN</span><span class="highlight-red">28.7 ng/mL ↓</span></div>
+                    <div class="data-row"><span>IL-1β</span><span class="highlight-red">8.7 pg/mL ↑</span></div>
+                    <div class="data-row"><span>TNF-α</span><span class="highlight-red">12.3 pg/mL ↑</span></div>
+                </div>
+                <div class="report-box">
+                    <div class="report-title">分子类型判读</div>
+                    <div style="font-size:12px; color:#666; margin-bottom:5px;">C1 型 (糖胺聚糖): 阴性</div>
+                    <div style="font-size:12px; color:#666; margin-bottom:5px;">C2 型 (胶原代谢): 阴性</div>
+                    <div class="c4-type">C4 型 (炎症驱动): 阳性 (主型)</div>
+                </div>
+            </div>
+
+            <div class="report-box" style="border-color:#007bff; background:#f0f7ff; margin-bottom:20px;">
+                <div class="report-title" style="background:#007bff; color:white;">PRP 疗效预测</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0;">
+                    <div>
+                        <div style="font-size:12px; color:#666;">预测有效率</div>
+                        <div style="font-size:24px; font-weight:bold; color:#d9534f;">82%</div>
+                    </div>
+                    <div style="text-align:right; font-size:13px;">
+                        <div><strong>推荐参数:</strong> LP-PRP (白细胞贫乏)</div>
+                        <div>浓度：1.5 × 10⁶ / μL</div>
+                        <div>频次：每 2 周 1 次</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top:40px;">
+                <button class="btn-glow" style="width:200px; background:#333;" onclick="window.print()">🖨️ 打印 / 下载 PDF</button>
+                <button class="btn-glow" style="width:200px; background:#666; margin-top:10px;" onclick="location.reload()">返回系统</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function goToMain() {
+            document.getElementById('login-card').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            // 添加一个简单的进入动画
+            document.getElementById('main-view').style.animation = "floatIn 0.5s ease-out";
+        }
+
+        function startAnalysis() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('report-modal').style.display = 'flex';
+            }, 10000);
+        }
+    </script>
+</body>
+</html>
